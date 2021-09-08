@@ -32,17 +32,20 @@ class TestScannerClass(unittest.TestCase):
         result = scanner.scan_tokens()
 
         self.assertTrue(result.success)
-        self.assertEqual(len(result.value), 1)
+        self.assertEqual(len(result.value), 2)
 
-        token = result.value[0]
-        self.assertEqual(token.token_type, TokenType.DOT)
+        dot_token = result.value[0]
+        self.assertEqual(dot_token.token_type, TokenType.DOT)
+
+        eof_token = result.value[1]
+        self.assertEqual(eof_token.token_type, TokenType.EOF)
 
     def test_equal_combinable_token(self):
         scanner = Scanner("< <=")
         result = scanner.scan_tokens()
 
         self.assertTrue(result.success)
-        self.assertEqual(len(result.value), 2)
+        self.assertEqual(len(result.value), 3)
 
         less_token = result.value[0]
         self.assertEqual(less_token.token_type, TokenType.LESS)
@@ -55,7 +58,7 @@ class TestScannerClass(unittest.TestCase):
         result = scanner.scan_tokens()
 
         self.assertTrue(result.success)
-        self.assertEqual(len(result.value), 1)
+        self.assertEqual(len(result.value), 2)
 
         token = result.value[0]
         self.assertEqual(token.token_type, TokenType.SLASH)
@@ -66,7 +69,7 @@ class TestScannerClass(unittest.TestCase):
         result = scanner.scan_tokens()
 
         self.assertTrue(result.success)
-        self.assertEqual(len(result.value), 1)
+        self.assertEqual(len(result.value), 2)
 
         token = result.value[0]
         self.assertEqual(token.token_type, TokenType.STRING)
@@ -78,7 +81,7 @@ class TestScannerClass(unittest.TestCase):
         result = scanner.scan_tokens()
 
         self.assertTrue(result.success)
-        self.assertEqual(len(result.value), 1)
+        self.assertEqual(len(result.value), 2)
 
         token = result.value[0]
         self.assertEqual(token.token_type, TokenType.NUMBER)
@@ -90,7 +93,7 @@ class TestScannerClass(unittest.TestCase):
         result = scanner.scan_tokens()
 
         self.assertTrue(result.success)
-        self.assertEqual(len(result.value), 1)
+        self.assertEqual(len(result.value), 2)
 
         token = result.value[0]
         self.assertEqual(token.token_type, TokenType.IDENTIFIER)
@@ -102,7 +105,7 @@ class TestScannerClass(unittest.TestCase):
         result = scanner.scan_tokens()
 
         self.assertTrue(result.success)
-        self.assertEqual(len(result.value), 1)
+        self.assertEqual(len(result.value), 2)
 
         token = result.value[0]
         self.assertEqual(token.token_type, TokenType.RETURN)

@@ -40,7 +40,7 @@ class Scanner:
     curr_index: int
     line_num: int
     tokens: list[Token]
-    errors: list[Exception]
+    errors: list[BaseScannerError]
 
     def __init__(self, source: str) -> None:
         self.source_code = source
@@ -73,7 +73,7 @@ class Scanner:
         return True
 
     def _add_token(self, type: TokenType, val: Any = None):
-        self.tokens.append(Token(type, val))
+        self.tokens.append(Token(type, val, self.line_num))
 
     def _add_error(self, err: BaseScannerError):
         self.errors.append(err)
@@ -165,4 +165,5 @@ class Scanner:
         if len(self.errors) > 0:
             return Result.Fail(self.errors)
 
+        self._add_token(TokenType.EOF)
         return Result.Ok(self.tokens)

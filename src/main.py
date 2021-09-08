@@ -1,5 +1,7 @@
 import sys
 from scanner import Scanner
+from lox_parser import Parser
+from expr import ASTPrinter
 
 
 def print_usage():
@@ -30,7 +32,16 @@ def main(argv: list):
             print(err.message)
         return
 
-    print(scanner_result.value)
+    parser = Parser(scanner_result.value)
+    parser_result = parser.parse()
+
+    if parser_result.failure:
+        print_error("Parser failed!")
+        for err in parser_result.error:
+            print(err.message)
+        return
+
+    print(ASTPrinter().make_str(parser_result))
 
 
 if __name__ == "__main__":

@@ -109,10 +109,12 @@ class TokenType(Enum):
 class Token:
     token_type: TokenType
     value: Any
+    line: int
 
-    def __init__(self, type: TokenType, val: Any) -> None:
+    def __init__(self, type: TokenType, val: Any, line: int) -> None:
         self.token_type = type
         self.value = val
+        self.line = line
 
     def __repr__(self) -> str:
         return "{}, val: {}".format(self.token_type, self.value)
