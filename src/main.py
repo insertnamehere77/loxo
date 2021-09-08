@@ -41,7 +41,7 @@ def main(argv: list):
             print(err.message)
         return
 
-    print(ASTPrinter().make_str(parser_result))
+    print(ASTPrinter().make_str(parser_result.value))
 
 
 if __name__ == "__main__":
