@@ -1,7 +1,7 @@
 import sys
 from scanner import Scanner
 from lox_parser import Parser
-from expr import ASTPrinter
+from expr import ASTPrinter, Interpreter
 
 
 def print_usage():
@@ -14,7 +14,7 @@ def read_in_file(file_name: str) -> str:
 
 
 def print_error(err: str):
-    print("\033[91m" + err + "\033[0m")
+    print(f"\033[91m{err}\033[0m")
 
 
 def main(argv: list):
@@ -42,6 +42,13 @@ def main(argv: list):
         return
 
     print(ASTPrinter().make_str(parser_result.value))
+    interpreter_result = Interpreter().interpret(parser_result.value)
+    if interpreter_result.failure:
+        print_error("Interpreter failed!")
+        print(interpreter_result.error)
+        return
+
+    print(interpreter_result.value)
 
 
 if __name__ == "__main__":

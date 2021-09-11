@@ -129,7 +129,7 @@ class Scanner:
             name,
         )
 
-    def scan_tokens(self) -> Result:
+    def scan_tokens(self) -> Result[list[Token], list[BaseScannerError]]:
         while not self._is_at_end():
             char = self._advance()
 

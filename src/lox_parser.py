@@ -24,7 +24,7 @@ class Parser:
         self.tokens = tokens
         self.errors = []
 
-    def parse(self) -> Result:
+    def parse(self) -> Result[Expr, list[ParseError]]:
         try:
             return Result.Ok(self._expression())
         except ParseError as err:

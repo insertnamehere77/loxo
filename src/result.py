@@ -1,10 +1,11 @@
-from typing import Any
+from typing import Any, TypeVar, Generic
 
 
-# TODO: It would be nice to communicate what type the _result is as maybe a generic or something?
+ValType = TypeVar("ValType")
+ErrType = TypeVar("ErrType")
 
 
-class Result:
+class Result(Generic[ValType, ErrType]):
     success: bool
     _result: Any
 
@@ -23,17 +24,17 @@ class Result:
         return not self.success
 
     @property
-    def value(self) -> Any:
+    def value(self) -> ValType:
         return self._result if (self.success) else None
 
     @property
-    def error(self) -> Any:
+    def error(self) -> ErrType:
         return self._result if (not self.success) else None
 
     @classmethod
-    def Ok(cls, val: Any):
+    def Ok(cls, val: ValType) -> "Result[ValType, ErrType]":
         return cls(success=True, result=val)
 
     @classmethod
-    def Fail(cls, err: Any):
+    def Fail(cls, err: ErrType) -> "Result[ValType, ErrType]":
         return cls(success=False, result=err)
