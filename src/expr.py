@@ -110,6 +110,10 @@ class Literal(Expr):
 
 @dataclass
 class Logical(Expr):
+    left: Expr
+    operator: Token
+    right: Expr
+
     def accept(self, visitor: ExprVisitor) -> Any:
         return visitor.visit_logical_expr(self)
 

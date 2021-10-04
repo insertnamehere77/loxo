@@ -1,7 +1,7 @@
 from result import Result
 from stmt import Print, Block, Var, Stmt
 from typing import Any
-from expr import Literal, Unary, Binary, Variable, Assign
+from expr import Literal, Unary, Binary, Variable, Assign, Logical
 from lox_token import Token, TokenType
 from lox_parser import Parser, ParseError
 import unittest
@@ -83,6 +83,38 @@ class TestParserClass(unittest.TestCase):
 
         self.assertTrue(isinstance(result.right, Literal))
         self.assertEqual(result.right.value, self._num_token.value)
+
+    def test_logical_or_and(self):
+        tokens = [
+            self._num_token,
+            self._token(TokenType.OR),
+            self._num_token,
+            self._token(TokenType.AND),
+            self._num_token,
+            self._token(TokenType.SEMICOLON),
+            self._eof_token,
+        ]
+        parser = Parser(tokens)
+        result = parser._expression()
+        print(result)
+
+        self.assertTrue(isinstance(result, Logical))
+
+        self.assertTrue(isinstance(result.left, Literal))
+        self.assertEqual(result.left.value, self._num_token.value)
+
+        self.assertEqual(result.operator.token_type, TokenType.OR)
+
+        right_logical = result.right
+        self.assertTrue(isinstance(right_logical, Logical))
+
+        self.assertTrue(isinstance(right_logical.left, Literal))
+        self.assertEqual(right_logical.left.value, self._num_token.value)
+
+        self.assertEqual(right_logical.operator.token_type, TokenType.AND)
+
+        self.assertTrue(isinstance(right_logical.right, Literal))
+        self.assertEqual(right_logical.right.value, self._num_token.value)
 
     def test_assignment(self):
         var_name = "var_name"

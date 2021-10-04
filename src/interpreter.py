@@ -1,5 +1,4 @@
 from environment import Environment
-from result import Result
 from typing import Any
 from expr import (
     ExprVisitor,
@@ -17,7 +16,7 @@ from expr import (
     This,
     Variable,
 )
-from stmt import StmtVisitor, Expression, Print, Stmt, Var, Block
+from stmt import StmtVisitor, Expression, Print, Stmt, Var, Block, If, While
 from lox_token import Token, TokenType
 
 
@@ -117,7 +116,15 @@ class Interpreter(ExprVisitor, StmtVisitor):
         return expr.value
 
     def visit_logical_expr(self, expr: "Logical") -> Any:
-        print("Implement me please!")
+        left_val = self._evaluate(expr.left)
+        if expr.operator.token_type == TokenType.OR:
+            if left_val:
+                return left_val
+        elif expr.operator.token_type == TokenType.AND:
+            if not left_val:
+                return left_val
+
+        return self._evaluate(expr.right)
 
     def visit_set_expr(self, expr: "Set") -> Any:
         print("Implement me please!")
@@ -177,3 +184,13 @@ class Interpreter(ExprVisitor, StmtVisitor):
                 self.execute(statement)
         finally:
             self._env = prev
+
+    def visit_if_stmt(self, stmt: "If") -> None:
+        if self._evaluate(stmt.condition):
+            self.execute(stmt.then_branch)
+        elif stmt.else_branch != None:
+            self.execute(stmt.else_branch)
+
+    def visit_while_stmt(self, stmt: "While") -> Any:
+        while self._evaluate(stmt.condition):
+            self.execute(stmt.body)

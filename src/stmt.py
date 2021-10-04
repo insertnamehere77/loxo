@@ -19,7 +19,15 @@ class StmtVisitor(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def visit_block_stmt(self, stmt: "Var") -> Any:
+    def visit_block_stmt(self, stmt: "Block") -> Any:
+        pass
+
+    @abc.abstractmethod
+    def visit_if_stmt(self, stmt: "If") -> Any:
+        pass
+
+    @abc.abstractmethod
+    def visit_while_stmt(self, stmt: "While") -> Any:
         pass
 
 
@@ -60,3 +68,22 @@ class Block(abc.ABC):
 
     def accept(self, visitor: StmtVisitor) -> Any:
         return visitor.visit_block_stmt(self)
+
+
+@dataclass
+class If(abc.ABC):
+    condition: Expr
+    then_branch: Stmt
+    else_branch: Stmt
+
+    def accept(self, visitor: StmtVisitor) -> Any:
+        return visitor.visit_if_stmt(self)
+
+
+@dataclass
+class While(abc.ABC):
+    condition: Expr
+    body: Stmt
+
+    def accept(self, visitor: StmtVisitor) -> Any:
+        return visitor.visit_while_stmt(self)

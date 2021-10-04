@@ -1,7 +1,7 @@
-from stmt import Print, Stmt, Expression, Var, Block
+from stmt import Print, Stmt, Expression, Var, Block, If, While
 from types import FunctionType
 from lox_token import Token, TokenType
-from expr import Binary, Expr, Grouping, Unary, Literal, Variable, Assign
+from expr import Binary, Expr, Grouping, Unary, Literal, Variable, Assign, Logical
 from result import Result
 
 
@@ -55,13 +55,74 @@ class Parser:
         return Var(name, initializer)
 
     def _statement(self) -> Stmt:
+
+        if self._match(TokenType.FOR):
+            return self._for_statement()
+
+        if self._match(TokenType.IF):
+            return self._if_statement()
+
         if self._match(TokenType.PRINT):
             return self._print_statement()
+
+        if self._match(TokenType.WHILE):
+            return self._while_statement()
 
         if self._match(TokenType.LEFT_BRACE):
             return Block(self._block())
 
         return self._expression_statement()
+
+    def _for_statement(self) -> Stmt:
+        self._consume(TokenType.LEFT_PAREN, "Expected ( after for")
+
+        initializer = None
+        if self._match(TokenType.SEMICOLON):
+            pass
+        elif self._match(TokenType.VAR):
+            initializer = self._var_declaration()
+        else:
+            initializer = self._expression_statement()
+
+        condition = None
+        if not self._check(TokenType.SEMICOLON):
+            condition = self._expression()
+        self._consume(TokenType.SEMICOLON, "Expected ; after for condition")
+
+        increment = None
+        if not self._check(TokenType.RIGHT_PAREN):
+            increment = self._expression()
+        self._consume(TokenType.RIGHT_PAREN, "Expected ) after for clauses")
+
+        body = self._statement()
+        if increment != None:
+            body = Block([body, Expression(increment)])
+
+        if condition == None:
+            condition = Literal(True)
+        body = While(condition, body)
+
+        if initializer != None:
+            body = Block([initializer, body])
+
+        return body
+
+    def _if_statement(self) -> Stmt:
+        self._consume(TokenType.LEFT_PAREN, "Expected ( after if")
+        condition = self._expression()
+        self._consume(TokenType.RIGHT_PAREN, "Expected ) after if condition")
+
+        then_branch = self._statement()
+        else_branch = self._statement() if self._match(TokenType.ELSE) else None
+        return If(condition, then_branch, else_branch)
+
+    def _while_statement(self) -> Stmt:
+        self._consume(TokenType.LEFT_PAREN, "Expected ( after while")
+        condition = self._expression()
+        self._consume(TokenType.RIGHT_PAREN, "Expected ) after while condition")
+
+        body = self._statement()
+        return While(condition, body)
 
     def _block(self) -> list[Stmt]:
         statements = []
@@ -85,7 +146,7 @@ class Parser:
         return self._assignment()
 
     def _assignment(self) -> Expr:
-        expr = self._equality()
+        expr = self._or()
         if self._match(TokenType.EQUAL):
             equals = self._previous()
             value = self._assignment()
@@ -97,12 +158,32 @@ class Parser:
             raise self._error(equals, "Invalid assignment")
         return expr
 
+    def _or(self) -> Expr:
+        return self._match_left_associate_logical(self._and, TokenType.OR)
+
+    def _and(self) -> Expr:
+        return self._match_left_associate_logical(self._equality, TokenType.AND)
+
+    def _match_left_associate_logical(
+        self, operand_method: FunctionType, *types: TokenType
+    ):
+        expr = operand_method()
+
+        while self._match(*types):
+            operator = self._previous()
+            right = operand_method()
+            expr = Logical(expr, operator, right)
+
+        return expr
+
     def _equality(self) -> Expr:
-        return self._match_left_associate(
+        return self._match_left_associate_binary(
             self._comparison, TokenType.BANG_EQUAL, TokenType.EQUAL_EQUAL
         )
 
-    def _match_left_associate(self, operand_method: FunctionType, *types: TokenType):
+    def _match_left_associate_binary(
+        self, operand_method: FunctionType, *types: TokenType
+    ):
         expr = operand_method()
 
         while self._match(*types):
@@ -113,7 +194,7 @@ class Parser:
         return expr
 
     def _comparison(self) -> Expr:
-        return self._match_left_associate(
+        return self._match_left_associate_binary(
             self._term,
             TokenType.GREATER,
             TokenType.GREATER_EQUAL,
@@ -122,10 +203,14 @@ class Parser:
         )
 
     def _term(self) -> Expr:
-        return self._match_left_associate(self._factor, TokenType.MINUS, TokenType.PLUS)
+        return self._match_left_associate_binary(
+            self._factor, TokenType.MINUS, TokenType.PLUS
+        )
 
     def _factor(self) -> Expr:
-        return self._match_left_associate(self._unary, TokenType.SLASH, TokenType.STAR)
+        return self._match_left_associate_binary(
+            self._unary, TokenType.SLASH, TokenType.STAR
+        )
 
     def _unary(self) -> Expr:
         if self._match(TokenType.BANG, TokenType.MINUS):
