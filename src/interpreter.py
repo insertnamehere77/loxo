@@ -16,8 +16,21 @@ from expr import (
     This,
     Variable,
 )
-from stmt import StmtVisitor, Expression, Print, Stmt, Var, Block, If, While
+from stmt import (
+    StmtVisitor,
+    Expression,
+    Print,
+    Stmt,
+    Var,
+    Block,
+    If,
+    While,
+    Fun,
+    Return,
+)
 from lox_token import Token, TokenType
+from callable import LoxCallable
+import time
 
 
 class LoxRuntimeError(Exception):
@@ -36,12 +49,58 @@ class InvalidOperatorError(Exception):
         self.message = f'Cannot apply operator {operator.value} to value(s) {",".join(str(values))}'
 
 
+class ReturnErr(Exception):
+    value: Any
+
+    def __init__(self, val: Any) -> None:
+        super().__init__()
+        self.value = val
+
+
+class LoxFunction(LoxCallable):
+    _declaration: Fun
+    _closure: Environment
+
+    def __init__(self, declaration: Fun, closure: Environment) -> None:
+        super().__init__()
+        self._declaration = declaration
+        self._closure = closure
+
+    def call(self, interpreter: "Interpreter", arguments: list[Any]):
+        env = Environment(self._closure)
+        for i in range(len(self._declaration.params)):
+            param_name = self._declaration.params[i].value
+            param_val = arguments[i]
+            env.define(param_name, param_val)
+        try:
+            interpreter._execute_block(self._declaration.body, env)
+        except ReturnErr as ret:
+            return ret.value
+
+        return None
+
+    def arity(self) -> int:
+        return len(self._declaration.params)
+
+
+class ClockFn(LoxCallable):
+    def arity(self) -> int:
+        return 0
+
+    def call(self, interpreter: "Interpreter", arguments: list[Any]) -> float:
+        return time.time()
+
+
 class Interpreter(ExprVisitor, StmtVisitor):
+    _globals: Environment
     _env: Environment
 
     def __init__(self) -> None:
         super().__init__()
-        self._env = Environment()
+        self._globals = Environment()
+        self._env = self._globals
+
+        self._globals.define("clock", ClockFn())
 
     def interpret(self, statements: list[Stmt]):
         try:
@@ -104,7 +163,19 @@ class Interpreter(ExprVisitor, StmtVisitor):
         raise InvalidOperatorError(op_type, left, right)
 
     def visit_call_expr(self, expr: "Call") -> Any:
-        print("Implement me please!")
+        callee = self._evaluate(expr.callee)
+
+        arguments = [self._evaluate(arg) for arg in expr.arguments]
+
+        if not isinstance(callee, LoxCallable):
+            raise Exception("Can't call this, put actual exception here")
+
+        function: LoxCallable = callee
+
+        if function.arity() != len(arguments):
+            raise Exception("Can't call this wrong arity, put actual exception here")
+
+        return function.call(self, arguments)
 
     def visit_get_expr(self, expr: "Get") -> Any:
         print("Implement me please!")
@@ -194,3 +265,14 @@ class Interpreter(ExprVisitor, StmtVisitor):
     def visit_while_stmt(self, stmt: "While") -> Any:
         while self._evaluate(stmt.condition):
             self.execute(stmt.body)
+
+    def visit_fun_stmt(self, stmt: "Fun") -> Any:
+        func = LoxFunction(stmt, self._env)
+        self._env.define(stmt.name.value, func)
+
+    def visit_return_stmt(self, stmt: "Return") -> Any:
+        value = None
+        if stmt.value != None:
+            value = self._evaluate(stmt.value)
+
+        raise ReturnErr(value)

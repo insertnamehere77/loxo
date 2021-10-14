@@ -82,6 +82,10 @@ class Binary(Expr):
 
 @dataclass
 class Call(Expr):
+    callee: Expr
+    paren: Token
+    arguments: list[Expr]
+
     def accept(self, visitor: ExprVisitor) -> Any:
         return visitor.visit_call_expr(self)
 

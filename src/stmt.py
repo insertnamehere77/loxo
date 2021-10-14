@@ -30,6 +30,14 @@ class StmtVisitor(abc.ABC):
     def visit_while_stmt(self, stmt: "While") -> Any:
         pass
 
+    @abc.abstractmethod
+    def visit_fun_stmt(self, stmt: "Fun") -> Any:
+        pass
+
+    @abc.abstractmethod
+    def visit_return_stmt(self, stmt: "Return") -> Any:
+        pass
+
 
 class Stmt(abc.ABC):
     @abc.abstractmethod
@@ -87,3 +95,22 @@ class While(abc.ABC):
 
     def accept(self, visitor: StmtVisitor) -> Any:
         return visitor.visit_while_stmt(self)
+
+
+@dataclass
+class Fun(abc.ABC):
+    name: Token
+    params: list[Token]
+    body: list[Stmt]
+
+    def accept(self, visitor: StmtVisitor) -> Any:
+        return visitor.visit_fun_stmt(self)
+
+
+@dataclass
+class Return(abc.ABC):
+    keyword: Token
+    value: Expr
+
+    def accept(self, visitor: StmtVisitor) -> Any:
+        return visitor.visit_return_stmt(self)

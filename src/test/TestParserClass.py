@@ -96,7 +96,6 @@ class TestParserClass(unittest.TestCase):
         ]
         parser = Parser(tokens)
         result = parser._expression()
-        print(result)
 
         self.assertTrue(isinstance(result, Logical))
 

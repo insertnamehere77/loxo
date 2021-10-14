@@ -1,7 +1,7 @@
-from stmt import Print, Stmt, Expression, Var, Block, If, While
+from stmt import Print, Stmt, Expression, Var, Block, If, While, Fun, Return
 from types import FunctionType
 from lox_token import Token, TokenType
-from expr import Binary, Expr, Grouping, Unary, Literal, Variable, Assign, Logical
+from expr import Binary, Expr, Grouping, Unary, Literal, Variable, Assign, Logical, Call
 from result import Result
 
 
@@ -12,7 +12,10 @@ class ParseError(Exception):
     def __init__(self, token: Token, err_msg: str) -> None:
         super().__init__()
         self.token = token
-        self.message = err_msg
+        self.message = f"Line {token.line}: {err_msg}"
+
+
+_MAX_NUM_ARGS = 255
 
 
 class Parser:
@@ -38,11 +41,38 @@ class Parser:
 
     def _declaration(self) -> Stmt:
         try:
+            if self._match(TokenType.FUN):
+                return self._function("function")
             if self._match(TokenType.VAR):
                 return self._var_declaration()
             return self._statement()
         except ParseError:
             self._synchronize()
+
+    def _function(self, kind: str) -> Stmt:
+        name = self._consume(TokenType.IDENTIFIER, f"Expected {kind} name")
+        self._consume(TokenType.LEFT_PAREN, f"Expected ( after {kind} name")
+
+        arguments = []
+        if not self._check(TokenType.RIGHT_PAREN):
+            first_loop = True
+            while first_loop or self._match(TokenType.COMMA):
+                if len(arguments) > _MAX_NUM_ARGS:
+                    self._error(
+                        self._peek(), f"Can't have more than {_MAX_NUM_ARGS} arguments"
+                    )
+                arguments.append(
+                    self._consume(TokenType.IDENTIFIER, "Expected parameter name")
+                )
+
+                first_loop = False
+
+        self._consume(
+            TokenType.RIGHT_PAREN, "Expected closing ) after function parameters"
+        )
+        self._consume(TokenType.LEFT_BRACE, f"Expected {'{'} before {kind} body")
+        body = self._block()
+        return Fun(name, arguments, body)
 
     def _var_declaration(self) -> Stmt:
         name = self._consume(TokenType.IDENTIFIER, "Expected variabled name.")
@@ -64,6 +94,9 @@ class Parser:
 
         if self._match(TokenType.PRINT):
             return self._print_statement()
+
+        if self._match(TokenType.RETURN):
+            return self._return_statement()
 
         if self._match(TokenType.WHILE):
             return self._while_statement()
@@ -136,6 +169,15 @@ class Parser:
         value = self._expression()
         self._consume(TokenType.SEMICOLON, "Expected ';' after expression")
         return Print(value)
+
+    def _return_statement(self) -> Stmt:
+        keyword = self._previous()
+        value = None
+        if not self._check(TokenType.SEMICOLON):
+            value = self._expression()
+
+        self._consume(TokenType.SEMICOLON, "Expected ';' after return value")
+        return Return(keyword, value)
 
     def _expression_statement(self) -> Stmt:
         value = self._expression()
@@ -218,7 +260,35 @@ class Parser:
             right = self._unary()
             return Unary(operator, right)
 
-        return self._primary()
+        return self._call()
+
+    def _call(self) -> Expr:
+        expr = self._primary()
+        while True:
+            if self._match(TokenType.LEFT_PAREN):
+                expr = self._finish_call(expr)
+            else:
+                break
+
+        return expr
+
+    def _finish_call(self, callee: Expr) -> Expr:
+        arguments: list[Expr] = []
+        if not self._check(TokenType.RIGHT_PAREN):
+            on_first_loop = True
+            while on_first_loop or self._match(TokenType.COMMA):
+                if len(arguments) > _MAX_NUM_ARGS:
+                    self._error(
+                        self._peek(), f"Can't have more than {_MAX_NUM_ARGS} arguments"
+                    )
+                arguments.append(self._expression())
+                on_first_loop = False
+
+        paren = self._consume(
+            TokenType.RIGHT_PAREN, "Expected closing ) after function call"
+        )
+
+        return Call(callee, paren, arguments)
 
     def _primary(self) -> Expr:
         if self._match(TokenType.FALSE):
@@ -241,7 +311,7 @@ class Parser:
 
         raise self._error(self._peek(), "Expect expression.")
 
-    def _consume(self, type: TokenType, err_msg: str) -> Expr:
+    def _consume(self, type: TokenType, err_msg: str) -> Token:
         if self._check(type):
             return self._advance()
 
