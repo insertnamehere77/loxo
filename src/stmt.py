@@ -38,6 +38,10 @@ class StmtVisitor(abc.ABC):
     def visit_return_stmt(self, stmt: "Return") -> Any:
         pass
 
+    @abc.abstractmethod
+    def visit_class_stmt(self, stmt: "LoxClass") -> Any:
+        pass
+
 
 class Stmt(abc.ABC):
     @abc.abstractmethod
@@ -71,7 +75,7 @@ class Var(Stmt):
 
 
 @dataclass
-class Block(abc.ABC):
+class Block(Stmt):
     statements: list[Stmt]
 
     def accept(self, visitor: StmtVisitor) -> Any:
@@ -79,7 +83,7 @@ class Block(abc.ABC):
 
 
 @dataclass
-class If(abc.ABC):
+class If(Stmt):
     condition: Expr
     then_branch: Stmt
     else_branch: Stmt
@@ -89,7 +93,7 @@ class If(abc.ABC):
 
 
 @dataclass
-class While(abc.ABC):
+class While(Stmt):
     condition: Expr
     body: Stmt
 
@@ -98,7 +102,7 @@ class While(abc.ABC):
 
 
 @dataclass
-class Fun(abc.ABC):
+class Fun(Stmt):
     name: Token
     params: list[Token]
     body: list[Stmt]
@@ -108,9 +112,18 @@ class Fun(abc.ABC):
 
 
 @dataclass
-class Return(abc.ABC):
+class Return(Stmt):
     keyword: Token
     value: Expr
 
     def accept(self, visitor: StmtVisitor) -> Any:
         return visitor.visit_return_stmt(self)
+
+
+@dataclass
+class LoxClass(Stmt):
+    name: Token
+    methods: list[Fun]
+
+    def accept(self, visitor: StmtVisitor) -> Any:
+        return visitor.visit_class_stmt(self)

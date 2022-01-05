@@ -92,6 +92,9 @@ class Call(Expr):
 
 @dataclass
 class Get(Expr):
+    obj: Expr
+    name: Token
+
     def accept(self, visitor: ExprVisitor) -> Any:
         return visitor.visit_get_expr(self)
 
@@ -124,6 +127,10 @@ class Logical(Expr):
 
 @dataclass
 class Set(Expr):
+    object: Expr
+    name: Token
+    value: Expr
+
     def accept(self, visitor: ExprVisitor) -> Any:
         return visitor.visit_set_expr(self)
 
@@ -136,6 +143,8 @@ class Super(Expr):
 
 @dataclass
 class This(Expr):
+    name: Token
+
     def accept(self, visitor: ExprVisitor) -> Any:
         return visitor.visit_this_expr(self)
 

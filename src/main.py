@@ -3,6 +3,7 @@ from scanner import Scanner
 from lox_parser import Parser
 from printer import ASTPrinter
 from interpreter import Interpreter
+from resolver import Resolver
 
 
 def print_usage():
@@ -42,7 +43,11 @@ def main(argv: list):
             print(err.message)
         return
 
-    Interpreter().interpret(parser_result.value)
+    interpreter = Interpreter()
+    resolver = Resolver(interpreter)
+    resolver._resolve_stmts(parser_result.value)
+
+    interpreter.interpret(parser_result.value)
 
 
 if __name__ == "__main__":

@@ -27,6 +27,7 @@ from stmt import (
     While,
     Fun,
     Return,
+    LoxClass,
 )
 from lox_token import Token, TokenType
 from callable import LoxCallable
@@ -60,11 +61,15 @@ class ReturnErr(Exception):
 class LoxFunction(LoxCallable):
     _declaration: Fun
     _closure: Environment
+    _is_init: bool
 
-    def __init__(self, declaration: Fun, closure: Environment) -> None:
+    def __init__(
+        self, declaration: Fun, closure: Environment, is_init: bool = False
+    ) -> None:
         super().__init__()
         self._declaration = declaration
         self._closure = closure
+        self._is_init = is_init
 
     def call(self, interpreter: "Interpreter", arguments: list[Any]):
         env = Environment(self._closure)
@@ -75,12 +80,21 @@ class LoxFunction(LoxCallable):
         try:
             interpreter._execute_block(self._declaration.body, env)
         except ReturnErr as ret:
+            if self._is_init:
+                return self._closure.get_at(0, "this")
             return ret.value
 
+        if self._is_init:
+            return self._closure.get_at(0, "this")
         return None
 
     def arity(self) -> int:
         return len(self._declaration.params)
+
+    def bind(self, instance: "LoxInstance"):
+        env = Environment(self._closure)
+        env.define("this", instance)
+        return LoxFunction(self._declaration, env, self._is_init)
 
 
 class ClockFn(LoxCallable):
@@ -91,14 +105,68 @@ class ClockFn(LoxCallable):
         return time.time()
 
 
+class LoxInstance:
+    _class: "LoxRuntimeClass"
+    _fields: dict
+
+    def __init__(self, lox_class: "LoxRuntimeClass") -> None:
+        self._class = lox_class
+        self._fields = dict()
+
+    def __str__(self) -> str:
+        return self._class._name
+
+    def get(self, name: str):
+        if name in self._fields:
+            return self._fields[name]
+
+        method = self._class.find_method(name)
+        if method != None:
+            return method.bind(self)
+
+        raise Exception(f"Undefined property: {name}.")
+
+    def set(self, name: str, value: Any):
+        self._fields[name] = value
+
+
+class LoxRuntimeClass(LoxCallable):
+    _name: str
+    _methods: dict
+
+    def __init__(self, name, methods: dict) -> None:
+        self._name = name
+        self._methods = methods
+
+    def arity(self) -> int:
+        initializer = self.find_method("init")
+        if initializer != None:
+            return initializer.arity()
+
+        return 0
+
+    def call(self, interpreter: "Interpreter", arguments: list[Any]) -> Any:
+        instance = LoxInstance(self)
+        initializer = self.find_method("init")
+        if initializer != None:
+            initializer.bind(instance).call(interpreter, arguments)
+        return instance
+
+    def find_method(self, name: str) -> LoxFunction:
+        if name in self._methods:
+            return self._methods[name]
+
+
 class Interpreter(ExprVisitor, StmtVisitor):
     _globals: Environment
     _env: Environment
+    _locals: dict
 
     def __init__(self) -> None:
         super().__init__()
         self._globals = Environment()
         self._env = self._globals
+        self._locals = dict()
 
         self._globals.define("clock", ClockFn())
 
@@ -117,7 +185,13 @@ class Interpreter(ExprVisitor, StmtVisitor):
 
     def visit_assign_expr(self, expr: "Assign") -> Any:
         value = self._evaluate(expr.value)
-        self._env.assign(expr.name.value, value)
+
+        distance = self._locals[expr.name.value]
+        if distance != None:
+            self._env.assign_at(distance, expr.name.value, value)
+        else:
+            self._globals.assign(expr.name.value, value)
+
         return value
 
     def visit_binary_expr(self, expr: "Binary") -> Any:
@@ -178,7 +252,11 @@ class Interpreter(ExprVisitor, StmtVisitor):
         return function.call(self, arguments)
 
     def visit_get_expr(self, expr: "Get") -> Any:
-        print("Implement me please!")
+        obj = self._evaluate(expr.obj)
+        if isinstance(obj, LoxInstance):
+            return obj.get(expr.name.value)
+
+        raise Exception("Can only call propertes on objects")
 
     def visit_grouping_expr(self, expr: "Grouping") -> Any:
         return self._evaluate(expr.expression)
@@ -198,13 +276,19 @@ class Interpreter(ExprVisitor, StmtVisitor):
         return self._evaluate(expr.right)
 
     def visit_set_expr(self, expr: "Set") -> Any:
-        print("Implement me please!")
+        obj = self._evaluate(expr.object)
+        if not type(obj) == LoxInstance:
+            raise Exception("Only instances have fields")
+
+        val = self._evaluate(expr.value)
+        obj.set(expr.name.value, val)
+        return val
 
     def visit_super_expr(self, expr: "Super") -> Any:
         print("Implement me please!")
 
     def visit_this_expr(self, expr: "This") -> Any:
-        print("Implement me please!")
+        return self._lookup_variable(expr.name, expr)
 
     def visit_unary_expr(self, expr: "Unary") -> Any:
         right = self._evaluate(expr.right)
@@ -219,7 +303,14 @@ class Interpreter(ExprVisitor, StmtVisitor):
         raise InvalidOperatorError(op_type, right)
 
     def visit_variable_expr(self, expr: "Variable") -> Any:
-        return self._env.get(expr.name.value)
+        return self._lookup_variable(expr.name, expr)
+
+    def _lookup_variable(self, name: Token, expr: Variable):
+        dist = self._locals.get(expr.name.value)
+        if dist != None:
+            return self._env.get_at(dist, name.value)
+
+        return self._globals.get(name.value)
 
     def _check_num_operands(self, operator: Token, *operands: Any):
         not_nums = [num for num in operands if not isinstance(num, float)]
@@ -276,3 +367,18 @@ class Interpreter(ExprVisitor, StmtVisitor):
             value = self._evaluate(stmt.value)
 
         raise ReturnErr(value)
+
+    def resolve(self, expr: Expr, depth: int) -> None:
+        self._locals[expr.name.value] = depth
+
+    def visit_class_stmt(self, stmt: "LoxClass") -> Any:
+        self._env.define(stmt.name.value, None)
+
+        methods = dict()
+        for method in stmt.methods:
+            is_init = method.name.value == "init"
+            func = LoxFunction(method, self._env, is_init)
+            methods[method.name.value] = func
+
+        klass = LoxRuntimeClass(stmt.name.value, methods)
+        self._env.assign(stmt.name.value, klass)

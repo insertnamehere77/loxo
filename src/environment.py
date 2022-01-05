@@ -32,3 +32,16 @@ class Environment:
             return
 
         raise Exception("PUT IN A RUNTIME EXCEPTION")
+
+    def get_at(self, distance: int, name: str) -> Any:
+        return self._ancestor(distance)._values[name]
+
+    def assign_at(self, distance: int, name: str, value: Any) -> None:
+        self._ancestor(distance)._values[name] = value
+
+    def _ancestor(self, distance: int) -> "Environment":
+        env: "Environment" = self
+        for i in range(distance):
+            env = env._enclosing
+
+        return env
