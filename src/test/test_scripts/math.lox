@@ -1,0 +1,27 @@
+// Add/Sub
+var a = 1;
+var b = 2;
+var c = a + b;
+assert(c == 3);
+assert(-c == -3);
+assert(c - a - b == 0);
+
+
+//Mult/Divide
+var d = c * b;
+assert(d == 6);
+assert(d / b == c);
+
+//Compare
+assert(c <= c);
+assert(c <= d);
+assert(c < d);
+
+assert(c >= c);
+assert(d >= c);
+assert(d > c);
+
+assert(c != d);
+
+assert(1);
+assertFalse(0);

@@ -105,6 +105,24 @@ class ClockFn(LoxCallable):
         return time.time()
 
 
+class AssertFn(LoxCallable):
+    def arity(self) -> int:
+        return 1
+
+    def call(self, interpreter: "Interpreter", arguments: list[Any]) -> float:
+        if not arguments[0]:
+            raise Exception("Assert failed yo")
+
+
+class AssertFalseFn(LoxCallable):
+    def arity(self) -> int:
+        return 1
+
+    def call(self, interpreter: "Interpreter", arguments: list[Any]) -> float:
+        if arguments[0]:
+            raise Exception("Assert failed yo")
+
+
 class LoxInstance:
     _class: "LoxRuntimeClass"
     _fields: dict
@@ -174,6 +192,8 @@ class Interpreter(ExprVisitor, StmtVisitor):
         self._locals = dict()
 
         self._globals.define("clock", ClockFn())
+        self._globals.define("assert", AssertFn())
+        self._globals.define("assertFalse", AssertFalseFn())
 
     def interpret(self, statements: list[Stmt]):
         try:

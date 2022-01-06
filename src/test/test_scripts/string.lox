@@ -1,0 +1,7 @@
+var greeting = "Howdy";
+assert(greeting);
+assertFalse("");
+
+var personalized_greeting = greeting + " Rohit!";
+assert(personalized_greeting == "Howdy Rohit!");
+assert(personalized_greeting != "Hello Rohit");

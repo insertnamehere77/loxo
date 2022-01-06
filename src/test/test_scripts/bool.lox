@@ -1,0 +1,10 @@
+var a = true;
+assert(a);
+assertFalse(!a);
+
+var b = false;
+assertFalse(b);
+assert(!b);
+
+assert(b or a);
+assert(a and !b);
