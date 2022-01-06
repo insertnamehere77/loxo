@@ -14,6 +14,7 @@ from expr import (
     Get,
     Set,
     This,
+    Super,
 )
 from result import Result
 
@@ -66,6 +67,12 @@ class Parser:
 
     def _class_declaration(self):
         name = self._consume(TokenType.IDENTIFIER, "Expected class name")
+
+        superclass = None
+        if self._match(TokenType.LESS):
+            self._consume(TokenType.IDENTIFIER, "Expected superclass name")
+            superclass = Variable(self._previous())
+
         self._consume(TokenType.LEFT_BRACE, "Expected opening { before class body")
 
         methods = []
@@ -73,7 +80,7 @@ class Parser:
             methods.append(self._function("method"))
 
         self._consume(TokenType.RIGHT_BRACE, "Expected closing } after class body")
-        return LoxClass(name, methods)
+        return LoxClass(name, superclass, methods)
 
     def _function(self, kind: str) -> Stmt:
         name = self._consume(TokenType.IDENTIFIER, f"Expected {kind} name")
@@ -333,6 +340,14 @@ class Parser:
 
         if self._match(TokenType.NUMBER, TokenType.STRING):
             return Literal(self._previous().value)
+
+        if self._match(TokenType.SUPER):
+            name = self._previous()
+            self._consume(TokenType.DOT, "Expected '.' after 'super'.")
+            method = self._consume(
+                TokenType.IDENTIFIER, "Expected superclass method name"
+            )
+            return Super(name, method)
 
         if self._match(TokenType.THIS):
             return This(self._previous())

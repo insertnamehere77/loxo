@@ -4,6 +4,8 @@ from expr import Expr
 from typing import Any
 from dataclasses import dataclass
 
+from expr import Variable
+
 
 class StmtVisitor(abc.ABC):
     @abc.abstractmethod
@@ -123,6 +125,7 @@ class Return(Stmt):
 @dataclass
 class LoxClass(Stmt):
     name: Token
+    superclass: Variable
     methods: list[Fun]
 
     def accept(self, visitor: StmtVisitor) -> Any:

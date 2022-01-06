@@ -132,10 +132,12 @@ class LoxInstance:
 
 class LoxRuntimeClass(LoxCallable):
     _name: str
+    _superclass: "LoxRuntimeClass"
     _methods: dict
 
-    def __init__(self, name, methods: dict) -> None:
+    def __init__(self, name, superclass: "LoxRuntimeClass", methods: dict) -> None:
         self._name = name
+        self._superclass = superclass
         self._methods = methods
 
     def arity(self) -> int:
@@ -155,6 +157,9 @@ class LoxRuntimeClass(LoxCallable):
     def find_method(self, name: str) -> LoxFunction:
         if name in self._methods:
             return self._methods[name]
+
+        if self._superclass != None:
+            return self._superclass.find_method(name)
 
 
 class Interpreter(ExprVisitor, StmtVisitor):
@@ -285,7 +290,14 @@ class Interpreter(ExprVisitor, StmtVisitor):
         return val
 
     def visit_super_expr(self, expr: "Super") -> Any:
-        print("Implement me please!")
+        dist = self._locals[expr.name.value]
+        superclass: LoxRuntimeClass = self._env.get_at(dist, "super")
+        obj = self._env.get_at(dist - 1, "this")
+
+        method = superclass.find_method(expr.method.value)
+        if method == None:
+            raise Exception(f"Undefined property {expr.method.value}")
+        return method.bind(obj)
 
     def visit_this_expr(self, expr: "This") -> Any:
         return self._lookup_variable(expr.name, expr)
@@ -372,7 +384,18 @@ class Interpreter(ExprVisitor, StmtVisitor):
         self._locals[expr.name.value] = depth
 
     def visit_class_stmt(self, stmt: "LoxClass") -> Any:
+
+        superclass = None
+        if stmt.superclass != None:
+            superclass = self._evaluate(stmt.superclass)
+            if type(superclass) != LoxRuntimeClass:
+                raise Exception("Superclass must be a class.")
+
         self._env.define(stmt.name.value, None)
+
+        if stmt.superclass != None:
+            self._env = Environment(self._env)
+            self._env.define("super", superclass)
 
         methods = dict()
         for method in stmt.methods:
@@ -380,5 +403,9 @@ class Interpreter(ExprVisitor, StmtVisitor):
             func = LoxFunction(method, self._env, is_init)
             methods[method.name.value] = func
 
-        klass = LoxRuntimeClass(stmt.name.value, methods)
+        klass = LoxRuntimeClass(stmt.name.value, superclass, methods)
+
+        if superclass != None:
+            self._env = self._env._enclosing
+
         self._env.assign(stmt.name.value, klass)

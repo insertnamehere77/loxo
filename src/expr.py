@@ -137,6 +137,9 @@ class Set(Expr):
 
 @dataclass
 class Super(Expr):
+    name: Token
+    method: Token
+
     def accept(self, visitor: ExprVisitor) -> Any:
         return visitor.visit_super_expr(self)
 

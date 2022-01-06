@@ -1,8 +1,7 @@
 import enum
-from lox_token import TokenType, Token
+from lox_token import Token
 from expr import (
     ExprVisitor,
-    Expr,
     Assign,
     Binary,
     Unary,
@@ -43,6 +42,7 @@ class LoxFunctionType(enum.Enum):
 class LoxClassType(enum.Enum):
     NONE = enum.auto()
     CLASS = enum.auto()
+    SUBCLASS = enum.auto()
 
 
 class Resolver(ExprVisitor, StmtVisitor):
@@ -188,6 +188,15 @@ class Resolver(ExprVisitor, StmtVisitor):
         self._declare(stmt.name)
         self._define(stmt.name)
 
+        if stmt.superclass != None and stmt.name.value == stmt.superclass.name.value:
+            raise Exception("A class can't inherit from itself")
+
+        if stmt.superclass != None:
+            self._currClass = LoxClassType.SUBCLASS
+            self._resolve(stmt.superclass)
+            self._begin_scope()
+            self._scopes[-1]["super"] = True
+
         self._begin_scope()
         self._scopes[-1]["this"] = True
 
@@ -198,6 +207,8 @@ class Resolver(ExprVisitor, StmtVisitor):
             self._resolve_function(method, func_type)
 
         self._end_scope()
+        if stmt.superclass != None:
+            self._end_scope()
         self._currClass = enclosingClass
 
     def visit_get_expr(self, expr: "Get") -> Any:
@@ -208,7 +219,9 @@ class Resolver(ExprVisitor, StmtVisitor):
         self._resolve(expr.object)
 
     def visit_super_expr(self, expr: "Super") -> Any:
-        print("Implement me please!")
+        if self._currClass != LoxClassType.SUBCLASS:
+            raise Exception("Can't use super outside of a subclass")
+        self._resolve_local(expr, expr.name)
 
     def visit_this_expr(self, expr: "This") -> Any:
         if self._currClass == LoxClassType.NONE:
