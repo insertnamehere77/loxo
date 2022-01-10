@@ -183,7 +183,9 @@ class LoxRuntimeClass(LoxCallable):
 class Interpreter(ExprVisitor, StmtVisitor):
     _globals: Environment
     _env: Environment
-    _locals: dict
+    # The book has this as <Expr, int>
+    # I think Token is probably fine for this with it's default hash method, but might need to revisit
+    _locals: dict[Token, int]
 
     def __init__(self) -> None:
         super().__init__()
@@ -211,7 +213,7 @@ class Interpreter(ExprVisitor, StmtVisitor):
     def visit_assign_expr(self, expr: "Assign") -> Any:
         value = self._evaluate(expr.value)
 
-        distance = self._locals[expr.name.value]
+        distance = self._locals.get(expr.name)
         if distance != None:
             self._env.assign_at(distance, expr.name.value, value)
         else:
@@ -310,7 +312,7 @@ class Interpreter(ExprVisitor, StmtVisitor):
         return val
 
     def visit_super_expr(self, expr: "Super") -> Any:
-        dist = self._locals[expr.name.value]
+        dist = self._locals.get(expr.name)
         superclass: LoxRuntimeClass = self._env.get_at(dist, "super")
         obj = self._env.get_at(dist - 1, "this")
 
@@ -338,7 +340,7 @@ class Interpreter(ExprVisitor, StmtVisitor):
         return self._lookup_variable(expr.name, expr)
 
     def _lookup_variable(self, name: Token, expr: Variable):
-        dist = self._locals.get(expr.name.value)
+        dist = self._locals.get(expr.name)
         if dist != None:
             return self._env.get_at(dist, name.value)
 
@@ -401,7 +403,7 @@ class Interpreter(ExprVisitor, StmtVisitor):
         raise ReturnErr(value)
 
     def resolve(self, expr: Expr, depth: int) -> None:
-        self._locals[expr.name.value] = depth
+        self._locals[expr.name] = depth
 
     def visit_class_stmt(self, stmt: "LoxClass") -> Any:
 

@@ -34,7 +34,7 @@ class Environment:
         raise Exception("PUT IN A RUNTIME EXCEPTION")
 
     def get_at(self, distance: int, name: str) -> Any:
-        return self._ancestor(distance)._values[name]
+        return self._ancestor(distance)._values.get(name)
 
     def assign_at(self, distance: int, name: str, value: Any) -> None:
         self._ancestor(distance)._values[name] = value

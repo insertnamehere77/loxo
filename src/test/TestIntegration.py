@@ -32,3 +32,8 @@ class TestIntegration(unittest.TestCase):
         self._exec("math.lox")
         self._exec("string.lox")
         self._exec("bool.lox")
+
+    def test_control_flow(self):
+        self._exec("branch.lox")
+        self._exec("loop.lox")
+        self._exec("functions.lox")

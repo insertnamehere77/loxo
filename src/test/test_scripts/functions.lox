@@ -1,0 +1,48 @@
+// Testing no args/one arg/multiple args
+fun noArgs() {
+    return true;
+}
+assert(noArgs());
+
+
+fun doubleNum(num) {
+    return num * 2;
+}
+assert(doubleNum(5) == 10);
+
+
+fun add(a, b) {
+    return a + b;
+}
+assert(add(2, 2) == 4);
+
+
+// Testing early returns
+fun isHowdy(word) {
+    if (word == "howdy") {
+        return true;
+    }
+    return false;
+}
+assert(isHowdy("howdy"));
+assertFalse(isHowdy("hello"));
+
+// Testing first class functions
+fun add1(num) {
+    return num + 1;
+}
+
+fun applyFunAndAdd2(num, callback) {
+    return callback(num) + 2;
+}
+assert(applyFunAndAdd2(0, add1) == 3);
+
+// Testing recursion
+fun fibonacci(num) {
+    if (num <= 1) {
+        return num;
+    }
+    return fibonacci(num - 1) + fibonacci(num - 2);
+}
+assert(fibonacci(2) == 1);
+assert(fibonacci(9) == 34);

@@ -1,0 +1,30 @@
+var a = 1;
+if (true) {
+    a = a + 1;
+}
+assert(a == 2);
+
+
+var b = 1;
+if (true) {
+    b = b + 1;
+} else {
+    b = b - 1;
+}
+assert(b == 2);
+
+
+var c = 1;
+if (false) {
+    c = c + 1;
+} else {
+    c = c - 1;
+}
+assert(c == 0);
+
+
+var d = 1;
+if (false) {
+    d = d + 1;
+}
+assert(d == 1);

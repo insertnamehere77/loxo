@@ -11,6 +11,8 @@ assert(c - a - b == 0);
 var d = c * b;
 assert(d == 6);
 assert(d / b == c);
+assert(c / b == 1.5);
+assert((a + a) / (4 - 2) == 1);
 
 //Compare
 assert(c <= c);
