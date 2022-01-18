@@ -1,0 +1,44 @@
+
+class Meal {
+    init() {
+        this.entree = "chicken";
+    }
+    
+    getSeconds() {
+        return this.entree + this.entree;
+    }
+
+    getSecondsEntree() {
+        return this.entree + this.entree;
+    }
+
+}
+
+class Lunch < Meal {
+    init(side) {
+        super.init();
+        this.side = side;
+    }
+
+    getSeconds() {
+        return this.entree + this.entree + this.side + this.side;
+    }
+
+    getSecondsSide() {
+        return this.side + this.side;
+    }
+}
+
+// Constructor can call super and obj had properties from parent
+var myLunch = Lunch("salad");
+assert(myLunch.side == "salad");
+assert(myLunch.entree == "chicken");
+
+//Can call methods from child or parent, and child methods overload parent methods
+assert(myLunch.getSecondsSide() == "saladsalad");
+assert(myLunch.getSecondsEntree() == "chickenchicken");
+assert(myLunch.getSeconds() == "chickenchickensaladsalad");
+
+// Parent class works on it's own
+var myMeal = Meal();
+assert(myMeal.getSeconds() == "chickenchicken");

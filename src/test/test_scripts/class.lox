@@ -1,0 +1,44 @@
+//Obj creation w/o init function
+//Assigning property, calling both "static"/non-static methods
+class Breakfast {
+    getMealOrder() {
+        return 1;
+    }
+
+    getTemp() {
+        return this.temp;
+    }
+}
+
+var hotBreakfast = Breakfast();
+assert(hotBreakfast.getMealOrder() == 1);
+hotBreakfast.temp = 300.0;
+assert(hotBreakfast.getTemp() == 300.0);
+hotBreakfast.temp = 400.0;
+assert(hotBreakfast.getTemp() == 400.0);
+
+// First class classes
+fun createAndSetTemp(cls, temp) {
+    var obj = cls();
+    obj.temp = temp;
+    return obj;
+}
+var coldBreakfast = createAndSetTemp(Breakfast, 0);
+assert(coldBreakfast.getTemp() == 0);
+
+
+
+// Obj creation w/ init function
+class Lunch {
+    init(meat, bread) {
+        this.meat = meat;
+        this.bread = bread;
+    }
+
+    sandwich() {
+        return this.bread + this.meat + this.bread;
+    }
+}
+
+var hamAndRye = Lunch("ham", "rye");
+assert(hamAndRye.sandwich() == "ryehamrye");

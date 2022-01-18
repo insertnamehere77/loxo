@@ -37,3 +37,7 @@ class TestIntegration(unittest.TestCase):
         self._exec("branch.lox")
         self._exec("loop.lox")
         self._exec("functions.lox")
+
+    def test_classes(self):
+        self._exec("class.lox")
+        self._exec("inheritance.lox")
