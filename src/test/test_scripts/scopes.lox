@@ -1,0 +1,19 @@
+var a = "global";
+{
+  fun showA() {
+    return a;
+  }
+
+  assert(showA() == "global");
+  var a = "block";
+  assert(showA() == "global");
+}
+
+
+
+var b = "outer";
+{
+    assert(b == "outer");
+    var b = "inner";
+    assert(b == "inner");
+}

@@ -41,3 +41,6 @@ class TestIntegration(unittest.TestCase):
     def test_classes(self):
         self._exec("class.lox")
         self._exec("inheritance.lox")
+
+    def test_edge_cases(self):
+        self._exec("scopes.lox")
