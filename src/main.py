@@ -5,10 +5,6 @@ from interpreter import Interpreter
 from resolver import Resolver
 
 
-def print_usage():
-    print("HEY DUMMY YOU FORGOT THE FILE")
-
-
 def read_in_file(file_name: str) -> str:
     with open(file_name) as file:
         return file.read()
@@ -20,7 +16,7 @@ def print_error(err: str):
 
 def main(argv: list):
     if len(argv) != 2:
-        print_usage()
+        print("File not provided")
         return
 
     source_code = read_in_file(argv[1])
@@ -42,11 +38,13 @@ def main(argv: list):
             print(err.message)
         return
 
-    interpreter = Interpreter()
-    resolver = Resolver(interpreter)
-    resolver._resolve_stmts(parser_result.value)
-
-    interpreter.interpret(parser_result.value)
+    try:
+        interpreter = Interpreter()
+        resolver = Resolver(interpreter)
+        resolver._resolve_stmts(parser_result.value)
+        interpreter.interpret(parser_result.value)
+    except Exception as err:
+        print(err)
 
 
 if __name__ == "__main__":

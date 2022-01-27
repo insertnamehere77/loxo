@@ -31,23 +31,8 @@ from stmt import (
 )
 from lox_token import Token, TokenType
 from callable import LoxCallable
+from runtime_errors import LoxRuntimeError, InvalidOperatorError
 import time
-
-
-class LoxRuntimeError(Exception):
-    pass
-
-
-class InvalidOperatorError(Exception):
-    operator: TokenType
-    values: tuple[Any]
-    message: str
-
-    def __init__(self, operator: TokenType, *values: Any) -> None:
-        super().__init__()
-        self.operator = operator
-        self.values = values
-        self.message = f'Cannot apply operator {operator.value} to value(s) {",".join(str(values))}'
 
 
 class ReturnErr(Exception):
@@ -105,13 +90,21 @@ class ClockFn(LoxCallable):
         return time.time()
 
 
+# TODO: Maybe this should be a LoxRuntimeException?
+class LoxAssertFailedError(Exception):
+    line: int
+
+    def __str__(self) -> str:
+        return f"Line {self.line}: Assert failed!"
+
+
 class AssertFn(LoxCallable):
     def arity(self) -> int:
         return 1
 
     def call(self, interpreter: "Interpreter", arguments: list[Any]) -> float:
         if not arguments[0]:
-            raise Exception("Assert failed yo")
+            raise LoxAssertFailedError()
 
 
 class AssertFalseFn(LoxCallable):
@@ -120,7 +113,7 @@ class AssertFalseFn(LoxCallable):
 
     def call(self, interpreter: "Interpreter", arguments: list[Any]) -> float:
         if arguments[0]:
-            raise Exception("Assert failed yo")
+            raise LoxAssertFailedError()
 
 
 class LoxInstance:
@@ -134,15 +127,16 @@ class LoxInstance:
     def __str__(self) -> str:
         return self._class._name
 
-    def get(self, name: str):
-        if name in self._fields:
-            return self._fields[name]
+    def get(self, name: Token):
+        name_str = name.value
+        if name_str in self._fields:
+            return self._fields[name_str]
 
-        method = self._class.find_method(name)
+        method = self._class.find_method(name_str)
         if method != None:
             return method.bind(self)
 
-        raise Exception(f"Undefined property: {name}.")
+        raise LoxRuntimeError(f"Undefined property: {name_str}.", name)
 
     def set(self, name: str, value: Any):
         self._fields[name] = value
@@ -198,11 +192,8 @@ class Interpreter(ExprVisitor, StmtVisitor):
         self._globals.define("assertFalse", AssertFalseFn())
 
     def interpret(self, statements: list[Stmt]):
-        try:
-            for statement in statements:
-                self.execute(statement)
-        except (LoxRuntimeError, InvalidOperatorError) as err:
-            print("HEY DUDE THIS IS WHERE YOU LEFT OFF")
+        for statement in statements:
+            self.execute(statement)
 
     def execute(self, statement: Stmt):
         statement.accept(self)
@@ -217,7 +208,7 @@ class Interpreter(ExprVisitor, StmtVisitor):
         if distance != None:
             self._env.assign_at(distance, expr.name.value, value)
         else:
-            self._globals.assign(expr.name.value, value)
+            self._globals.assign(expr.name, value)
 
         return value
 
@@ -232,7 +223,7 @@ class Interpreter(ExprVisitor, StmtVisitor):
                 isinstance(left, str) or isinstance(left, float)
             ):
                 return left + right
-            raise LoxRuntimeError()
+            raise InvalidOperatorError(expr.operator, left, right)
         if op_type == TokenType.MINUS:
             self._check_num_operands(expr.operator, left, right)
             return left - right
@@ -261,7 +252,7 @@ class Interpreter(ExprVisitor, StmtVisitor):
             self._check_num_operands(expr.operator, left, right)
             return left <= right
 
-        raise InvalidOperatorError(op_type, left, right)
+        raise InvalidOperatorError(expr.operator, left, right)
 
     def visit_call_expr(self, expr: "Call") -> Any:
         callee = self._evaluate(expr.callee)
@@ -269,21 +260,27 @@ class Interpreter(ExprVisitor, StmtVisitor):
         arguments = [self._evaluate(arg) for arg in expr.arguments]
 
         if not isinstance(callee, LoxCallable):
-            raise Exception("Can't call this, put actual exception here")
+            raise LoxRuntimeError("Can only call functions and classes", expr.paren)
 
         function: LoxCallable = callee
 
         if function.arity() != len(arguments):
-            raise Exception("Can't call this wrong arity, put actual exception here")
-
-        return function.call(self, arguments)
+            raise LoxRuntimeError(
+                f"Wrong number of args, expected {function.arity()} but recieved {len(arguments)}",
+                expr.paren,
+            )
+        try:
+            return function.call(self, arguments)
+        except (LoxAssertFailedError) as err:
+            err.line = expr.paren.line
+            raise err
 
     def visit_get_expr(self, expr: "Get") -> Any:
         obj = self._evaluate(expr.obj)
         if isinstance(obj, LoxInstance):
-            return obj.get(expr.name.value)
+            return obj.get(expr.name)
 
-        raise Exception("Can only call propertes on objects")
+        raise LoxRuntimeError("Can only call propertes on objects", expr.name)
 
     def visit_grouping_expr(self, expr: "Grouping") -> Any:
         return self._evaluate(expr.expression)
@@ -305,7 +302,7 @@ class Interpreter(ExprVisitor, StmtVisitor):
     def visit_set_expr(self, expr: "Set") -> Any:
         obj = self._evaluate(expr.object)
         if not type(obj) == LoxInstance:
-            raise Exception("Only instances have fields")
+            raise LoxRuntimeError("Only instances have fields", expr.name)
 
         val = self._evaluate(expr.value)
         obj.set(expr.name.value, val)
@@ -318,7 +315,7 @@ class Interpreter(ExprVisitor, StmtVisitor):
 
         method = superclass.find_method(expr.method.value)
         if method == None:
-            raise Exception(f"Undefined property {expr.method.value}")
+            raise LoxRuntimeError(f"Undefined property {expr.method.value}", expr.name)
         return method.bind(obj)
 
     def visit_this_expr(self, expr: "This") -> Any:
@@ -334,7 +331,7 @@ class Interpreter(ExprVisitor, StmtVisitor):
         if op_type == TokenType.BANG:
             return not right
 
-        raise InvalidOperatorError(op_type, right)
+        raise InvalidOperatorError(expr.operator, right)
 
     def visit_variable_expr(self, expr: "Variable") -> Any:
         return self._lookup_variable(expr.name, expr)
@@ -344,13 +341,13 @@ class Interpreter(ExprVisitor, StmtVisitor):
         if dist != None:
             return self._env.get_at(dist, name.value)
 
-        return self._globals.get(name.value)
+        return self._globals.get(name)
 
     def _check_num_operands(self, operator: Token, *operands: Any):
         not_nums = [num for num in operands if not isinstance(num, float)]
 
         if len(not_nums) > 0:
-            raise LoxRuntimeError()
+            raise InvalidOperatorError(operator, *operands)
 
     # Stmt
 
@@ -411,7 +408,7 @@ class Interpreter(ExprVisitor, StmtVisitor):
         if stmt.superclass != None:
             superclass = self._evaluate(stmt.superclass)
             if type(superclass) != LoxRuntimeClass:
-                raise Exception("Superclass must be a class.")
+                raise LoxRuntimeError("Superclass must be a class.", stmt.name)
 
         self._env.define(stmt.name.value, None)
 
@@ -430,4 +427,4 @@ class Interpreter(ExprVisitor, StmtVisitor):
         if superclass != None:
             self._env = self._env._enclosing
 
-        self._env.assign(stmt.name.value, klass)
+        self._env.assign(stmt.name, klass)

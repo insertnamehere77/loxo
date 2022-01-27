@@ -30,6 +30,7 @@ from stmt import (
 )
 from interpreter import Interpreter
 from typing import Any
+from runtime_errors import LoxRuntimeError
 
 
 class LoxFunctionType(enum.Enum):
@@ -89,7 +90,9 @@ class Resolver(ExprVisitor, StmtVisitor):
 
         scope = self._scopes[-1]
         if name.value in scope:
-            raise Exception("Already a variable with this name in this scope.")
+            raise LoxRuntimeError(
+                "Already a variable with this name in this scope.", name
+            )
         scope[name.value] = False
 
     def _define(self, name: Token) -> None:
@@ -100,8 +103,9 @@ class Resolver(ExprVisitor, StmtVisitor):
 
     def visit_variable_expr(self, expr: Variable) -> Any:
         if len(self._scopes) != 0 and self._scopes[-1].get(expr.name.value) == False:
-            # TODO: Put in a more specific error
-            raise Exception("Can't read local variable in its own initializer.")
+            raise LoxRuntimeError(
+                "Can't read local variable in its own initializer.", expr.name
+            )
 
         self._resolve_local(expr, expr.name)
 
@@ -147,11 +151,13 @@ class Resolver(ExprVisitor, StmtVisitor):
 
     def visit_return_stmt(self, stmt: Return) -> Any:
         if self._currFunc == LoxFunctionType.NONE:
-            raise Exception("Can't return from top level code")
+            raise LoxRuntimeError("Can't return from top level code", stmt.keyword)
 
         if stmt.value != None:
             if self._currFunc == LoxFunctionType.INITIALIZER:
-                raise Exception("Can't return a value from initializer")
+                raise LoxRuntimeError(
+                    "Can't return a value from initializer", stmt.keyword
+                )
             self._resolve(stmt.value)
 
     def visit_while_stmt(self, stmt: While) -> Any:
@@ -189,7 +195,7 @@ class Resolver(ExprVisitor, StmtVisitor):
         self._define(stmt.name)
 
         if stmt.superclass != None and stmt.name.value == stmt.superclass.name.value:
-            raise Exception("A class can't inherit from itself")
+            raise LoxRuntimeError("A class can't inherit from itself", stmt.name)
 
         if stmt.superclass != None:
             self._currClass = LoxClassType.SUBCLASS
@@ -220,10 +226,10 @@ class Resolver(ExprVisitor, StmtVisitor):
 
     def visit_super_expr(self, expr: "Super") -> Any:
         if self._currClass != LoxClassType.SUBCLASS:
-            raise Exception("Can't use super outside of a subclass")
+            raise LoxRuntimeError("Can't use super outside of a subclass", expr.name)
         self._resolve_local(expr, expr.name)
 
     def visit_this_expr(self, expr: "This") -> Any:
         if self._currClass == LoxClassType.NONE:
-            raise Exception("Can't use 'this' outside of a class.")
+            raise LoxRuntimeError("Can't use 'this' outside of a class.", expr.name)
         self._resolve_local(expr, expr.name)
