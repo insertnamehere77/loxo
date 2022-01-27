@@ -30,9 +30,8 @@ from stmt import (
     LoxClass,
 )
 from lox_token import Token, TokenType
-from callable import LoxCallable
 from runtime_errors import LoxRuntimeError, InvalidOperatorError
-import time
+import time, abc
 
 
 class ReturnErr(Exception):
@@ -41,6 +40,18 @@ class ReturnErr(Exception):
     def __init__(self, val: Any) -> None:
         super().__init__()
         self.value = val
+
+
+class LoxCallable(abc.ABC):
+    @abc.abstractmethod
+    def call(self, interpreter: "Interpreter", arguments: list[Any]) -> Any:
+        pass
+
+    @abc.abstractmethod
+    def arity(
+        self,
+    ) -> int:
+        pass
 
 
 class LoxFunction(LoxCallable):
